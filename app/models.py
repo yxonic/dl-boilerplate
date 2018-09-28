@@ -21,7 +21,7 @@ class Model(abc.ABC):
 
     @classmethod
     def build(cls, **kwargs):
-        """Build module. Parameters are specified by keyword arguments.
+        """Build model. Parameters are specified by keyword arguments.
 
         Example:
             >>> model = Simple.build(foo=3)
@@ -33,6 +33,7 @@ class Model(abc.ABC):
 
     @classmethod
     def parse(cls, args):
+        """Parse command-line options and build model."""
         parser = util._ArgumentParser(prog='', add_help=False,
                                       raise_error=True)
         cls._add_arguments(parser)
