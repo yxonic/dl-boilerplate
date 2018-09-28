@@ -4,6 +4,7 @@ Model classes that defines model parameters and architecture.
 import abc
 import argparse
 from collections import namedtuple
+
 from . import util
 
 
@@ -17,7 +18,7 @@ class Model(abc.ABC):
     @abc.abstractmethod
     def _add_arguments(cls, parser: argparse.ArgumentParser):
         """Add arguments to an argparse subparser."""
-        pass  # pragma: no cover
+        raise NotImplementedError
 
     @classmethod
     def build(cls, **kwargs):

@@ -2,18 +2,19 @@
 Main program parsing arguments and running commands.
 """
 from __future__ import print_function
+
 import abc
 import argparse
-import os
-import sys
-import shutil
-import logging
 import inspect as ins
+import logging
+import os
+import shutil
+import sys
 from collections import namedtuple, defaultdict
 
 from . import command
-from . import util
 from . import models as mm
+from . import util
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -45,7 +46,7 @@ class Command(abc.ABC):
     """Command interface."""
     @abc.abstractmethod
     def run(self, args):
-        pass
+        raise NotImplementedError
 
 
 class WorkspaceCommand(Command):
@@ -66,7 +67,7 @@ class WorkspaceCommand(Command):
 
     @abc.abstractmethod
     def run_with(self, model, args):
-        pass
+        raise NotImplementedError
 
 
 class Train(WorkspaceCommand):
