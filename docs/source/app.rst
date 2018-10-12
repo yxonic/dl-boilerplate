@@ -4,7 +4,7 @@ app.run
    :members:
 
 app.command
-------------
+-----------
 .. automodule:: app.command
    :members:
 
@@ -14,6 +14,6 @@ app.models
    :members:
 
 app.util
----------
+--------
 .. automodule:: app.util
    :members:

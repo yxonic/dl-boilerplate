@@ -53,17 +53,15 @@ class WorkspaceCommand(Command):
     """Base class for commands that requires to run in a workspace."""
 
     def run(self, args):
-        if os.path.exists(os.path.join(args.workspace, 'config.toml')):
-            util.load_config(args.workspace)
-        else:
+        if not os.path.exists(os.path.join(args.workspace, 'config.toml')):
             print('you must run config first!', file=sys.stderr)
             sys.exit(1)
 
-        model = util.load_config(args.workspace)
+        model_cls, config = util.load_config(args.workspace)
         args = {name: value for (name, value) in args._get_kwargs()
                 if name != 'command' and name != 'func'}
         args = namedtuple('Args', args.keys())(*args.values())
-        return self.run_with(model, args)
+        return self.run_with(model_cls.build(**config), args)
 
     @abc.abstractmethod
     def run_with(self, model, args):
@@ -74,7 +72,7 @@ class Train(WorkspaceCommand):
     """Command ``train``. See :func:`~app.command.train`."""
 
     def __init__(self, parser):
-        r"""
+        """
         Args:
             -N,--epochs (int): number of epochs to train. Default: 10
         """
@@ -89,7 +87,7 @@ class Test(WorkspaceCommand):
     """Command ``test``. See :func:`~app.command.test`."""
 
     def __init__(self, parser):
-        r"""
+        """
         Args:
             -s,--snapshot (str): model snapshot to test with
         """
@@ -127,14 +125,12 @@ class Config(Command):
 
             def save(args):
                 _model = args.model
-                _Model = getattr(mm, _model)
                 config = {name: value for (name, value) in args._get_kwargs()
                           if name in group_options[_model]}
-                m = _Model.build(**config)
                 print('In [%s]: configured %s with %s' %
-                      (args.workspace, _model, str(m.config)),
+                      (args.workspace, _model, str(config)),
                       file=sys.stderr)
-                util.save_config(m, args.workspace)
+                util.save_config(_model, config, args.workspace)
 
             sub.set_defaults(func=save)
 
@@ -188,7 +184,6 @@ def main(args):
     consoleHandler.setFormatter(logFormatter)
     logger.addHandler(consoleHandler)
 
-    rv = None
     try:
         return args.func(args)
     except KeyboardInterrupt:  # pragma: no cover
