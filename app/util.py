@@ -1,26 +1,60 @@
 import argparse
 import logging
 import os
+import re
 import sys
 
 import toml
 
-from . import models
+
+def _unfold_config(cfg):  # pragma: no cover
+    for k, v in cfg.items():
+        if isinstance(v, dict):
+            _unfold_config(v)
+        if '.' not in k:
+            continue
+        d = cfg
+        for sec in k.split('.')[:-1]:
+            if sec in d:
+                d = d[sec]
+            else:
+                d[sec] = {}
+                d = d[sec]
+        d[k.split('.')[-1]] = v
+        del cfg[k]
 
 
-def save_config(model_name, config, workspace):
-    """Save model configuration to ``workspace``."""
+def save_config(workspace, config):
+    """Save configuration to ``workspace``."""
+    cfg = load_config(workspace)
+    cfg.update(config)
+    _unfold_config(cfg)
     f = open(os.path.join(workspace, 'config.toml'), 'w')
-    toml.dump({'model': model_name,
-               'config': config}, f)
+    toml.dump(cfg, f)
     f.close()
 
 
 def load_config(workspace):
-    """Load model configuration from ``workspace``."""
-    config = toml.load(open(os.path.join(workspace, 'config.toml'), 'r'))
-    Model = getattr(models, config['model'])
-    return Model, config['config']
+    """Load configuration from ``workspace``."""
+    try:
+        config = toml.load(open(os.path.join(workspace, 'config.toml'), 'r'))
+        return config
+    except OSError:
+        return {}
+
+
+def namespace_subparser(namespace, parser):  # pragma: no cover
+    robj = re.compile(r'^(-+)')
+
+    class _Wrapper:
+        def __init__(self, parser):
+            self.parser = parser
+
+        def add_argument(self, *args, **kwargs):
+            args = [robj.sub(r'\1' + namespace + '.', s) for s in args]
+            self.parser.add_argument(*args, **kwargs)
+
+    return _Wrapper(parser)
 
 
 class _BColors:

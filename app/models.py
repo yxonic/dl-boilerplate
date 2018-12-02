@@ -56,3 +56,19 @@ class Simple(Model):
     def _add_arguments(cls, parser):
         parser.add_argument('-foo', default=10, type=int,
                             help='dumb param')
+
+
+'''
+class Complex(Model):
+    """A toy class to demonstrate how to put models together."""
+
+    @classmethod
+    def _add_arguments(cls, parser):
+        Simple._add_arguments(util.namespace_subparser('l1', parser))
+        Simple._add_arguments(util.namespace_subparser('l2', parser))
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.l1 = Simple.build(**config.l1)
+        self.l2 = Simple.build(**config.l2)
+'''

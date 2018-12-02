@@ -44,6 +44,9 @@ _subparsers.required = True
 
 class Command(abc.ABC):
     """Command interface."""
+    def __init__(self, parser):
+        self.parser = parser
+
     @abc.abstractmethod
     def run(self, args):
         raise NotImplementedError
@@ -57,14 +60,26 @@ class WorkspaceCommand(Command):
             print('you must run config first!', file=sys.stderr)
             sys.exit(1)
 
-        model_cls, config = util.load_config(args.workspace)
+        config = util.load_config(args.workspace)
+
+        model_cls = getattr(mm, config['model'])
+        cmd = args.command
+        ws = args.workspace
+
+        full_args = {name: value for (name, value) in args._get_kwargs()
+                     if name != 'command' and name != 'func' and name != 'workspace'}
         args = {name: value for (name, value) in args._get_kwargs()
-                if name != 'command' and name != 'func'}
-        args = namedtuple('Args', args.keys())(*args.values())
-        return self.run_with(model_cls.build(**config), args)
+                if name != 'command' and name != 'func' and name != 'workspace' and
+                self.parser.get_default(name) != value}
+        full_args.update(config.get(cmd) or {})
+        full_args.update(args)
+
+        util.save_config(ws, {cmd: full_args})
+        args = namedtuple(cmd.capitalize(), full_args.keys())(*full_args.values())
+        return self.run_with(model_cls.build(**config['config']), ws, args)
 
     @abc.abstractmethod
-    def run_with(self, model, args):
+    def run_with(self, model, ws, args):
         raise NotImplementedError
 
 
@@ -76,10 +91,11 @@ class Train(WorkspaceCommand):
         Args:
             -N,--epochs (int): number of epochs to train. Default: 10
         """
+        super().__init__(parser)
         parser.add_argument('-N', '--epochs', type=int, default=10,
                             help='number of epochs to train')
 
-    def run_with(self, model, args):
+    def run_with(self, model, ws, args):
         return command.train(model, args)
 
 
@@ -91,10 +107,11 @@ class Test(WorkspaceCommand):
         Args:
             -s,--snapshot (str): model snapshot to test with
         """
+        super().__init__(parser)
         parser.add_argument('-s', '--snapshot',
                             help='model snapshot to test with')
 
-    def run_with(self, model, args):
+    def run_with(self, model, ws, args):
         return command.test(model, args)
 
 
@@ -111,6 +128,7 @@ class Config(Command):
     """
 
     def __init__(self, parser):
+        super().__init__(parser)
         subs = parser.add_subparsers(title='models available', dest='model')
         subs.required = True
         group_options = defaultdict(set)
@@ -130,7 +148,7 @@ class Config(Command):
                 print('In [%s]: configured %s with %s' %
                       (args.workspace, _model, str(config)),
                       file=sys.stderr)
-                util.save_config(_model, config, args.workspace)
+                util.save_config(args.workspace, {'model': _model, 'config': config})
 
             sub.set_defaults(func=save)
 
@@ -146,6 +164,7 @@ class Clean(Command):
     """
 
     def __init__(self, parser):
+        super().__init__(parser)
         parser.add_argument('--all', action='store_true',
                             help='clean the entire workspace')
 

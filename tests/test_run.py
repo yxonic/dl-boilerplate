@@ -73,6 +73,14 @@ def test_main(tmpdir: py.path.local, capsys: CaptureFixture):
     assert model.config.x == -3
     assert args.snapshot == '15'
 
+    # a re-run should remain the same arguments
+    args = app.run.main_parser.parse_args(
+        ['-w', ws_path, 'test']
+    )
+    model, args = app.run.main(args)
+    assert model.config.x == -3
+    assert args.snapshot == '15'
+
     # test clean
     args = app.run.main_parser.parse_args(
         ['-w', ws_path, 'clean']
