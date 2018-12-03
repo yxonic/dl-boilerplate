@@ -3,6 +3,7 @@ import pytest
 from _pytest.capture import CaptureFixture
 
 import app.command
+import app.common
 import app.models
 from app.models import Model
 
@@ -13,8 +14,8 @@ class ModelTest(Model):
         parser.add_argument('-x', default=10, type=int)
 
 
-def dummy(model, ws, args):
-    return model, ws, args
+def dummy(ws, args):
+    return ws, args
 
 
 # insert model and command for testing
@@ -33,13 +34,12 @@ def test_main(tmpdir: py.path.local, capsys: CaptureFixture):
     import app.run
 
     # error if workspace command called before config
-    with pytest.raises(SystemExit) as e:
+    with pytest.raises(app.common.NotConfiguredError):
         args = app.run.main_parser.parse_args(
             ['-w', ws_path, 'train']
         )
-        app.run.main(args)
-    assert e.value.code == 1
-    assert capsys.readouterr().err.strip() == 'you must run config first!'
+        w, _ = app.run.main(args)
+        _ = w.model
 
     # test config
     args = app.run.main_parser.parse_args(
@@ -62,23 +62,15 @@ def test_main(tmpdir: py.path.local, capsys: CaptureFixture):
     args = app.run.main_parser.parse_args(
         ['-w', ws_path, 'train', '-N', '3']
     )
-    model, _, args = app.run.main(args)
-    assert model.config.x == -3
+    w, args = app.run.main(args)
+    assert w.model.config.x == -3
     assert args.epochs == 3
 
     args = app.run.main_parser.parse_args(
         ['-w', ws_path, 'test', '-s', '15']
     )
-    model, _, args = app.run.main(args)
-    assert model.config.x == -3
-    assert args.snapshot == '15'
-
-    # a re-run should remain the same arguments
-    args = app.run.main_parser.parse_args(
-        ['-w', ws_path, 'test']
-    )
-    model, _, args = app.run.main(args)
-    assert model.config.x == -3
+    w, args = app.run.main(args)
+    assert w.model.config.x == -3
     assert args.snapshot == '15'
 
     # test clean

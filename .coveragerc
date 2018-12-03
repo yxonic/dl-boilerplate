@@ -4,3 +4,5 @@ exclude_lines =
     pass
     raise NotImplementedError
     if __name__ == '__main__':
+    def __str__
+    def __repr__
