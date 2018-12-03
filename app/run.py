@@ -29,8 +29,8 @@ def _sub_class_checker(cls):
     return rv
 
 
-models = [m[0] for m in ins.getmembers(mm, _sub_class_checker(mm.Model))
-          if not m[0].startswith('_')]
+_models = [m[0] for m in ins.getmembers(mm, _sub_class_checker(mm.Model))
+           if not m[0].startswith('_')]
 
 _parser_formatter = argparse.ArgumentDefaultsHelpFormatter
 main_parser = util._ArgumentParser(formatter_class=_parser_formatter,
@@ -133,7 +133,7 @@ class Config(Command):
         subs.required = True
         group_options = defaultdict(set)
 
-        for model in models:
+        for model in _models:
             sub = subs.add_parser(model, formatter_class=_parser_formatter)
             group = sub.add_argument_group('config')
             Model = getattr(mm, model)
@@ -193,7 +193,7 @@ def main(args):
     fileFormatter = logging.Formatter('%(levelname)s %(asctime)s %(message)s',
                                       datefmt='%Y-%m-%d %H:%M:%S')
 
-    if issubclass(commands[args.command], WorkspaceCommand):
+    if issubclass(_commands[args.command], WorkspaceCommand):
         fileHandler = logging.FileHandler(
             os.path.join(workspace, 'logs', args.command + '.log'))
         fileHandler.setFormatter(fileFormatter)
@@ -213,13 +213,13 @@ def main(args):
         logger.error('exception occurred: %s', e)
 
 
-commands = {m[0].lower(): m[1]
-            for m in ins.getmembers(sys.modules[__name__],
-                                    _sub_class_checker(Command))}
-for _cmd in commands:
+_commands = {m[0].lower(): m[1]
+             for m in ins.getmembers(sys.modules[__name__],
+                                     _sub_class_checker(Command))}
+for _cmd in _commands:
     _sub = _subparsers.add_parser(_cmd,
                                   formatter_class=_parser_formatter)
-    _sub.set_defaults(func=commands[_cmd](_sub).run)
+    _sub.set_defaults(func=_commands[_cmd](_sub).run)
 
 
 if __name__ == '__main__':

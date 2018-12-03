@@ -13,8 +13,8 @@ class ModelTest(Model):
         parser.add_argument('-x', default=10, type=int)
 
 
-def dummy(model, args):
-    return model, args
+def dummy(model, ws, args):
+    return model, ws, args
 
 
 # insert model and command for testing
@@ -62,14 +62,14 @@ def test_main(tmpdir: py.path.local, capsys: CaptureFixture):
     args = app.run.main_parser.parse_args(
         ['-w', ws_path, 'train', '-N', '3']
     )
-    model, args = app.run.main(args)
+    model, _, args = app.run.main(args)
     assert model.config.x == -3
     assert args.epochs == 3
 
     args = app.run.main_parser.parse_args(
         ['-w', ws_path, 'test', '-s', '15']
     )
-    model, args = app.run.main(args)
+    model, _, args = app.run.main(args)
     assert model.config.x == -3
     assert args.snapshot == '15'
 
@@ -77,7 +77,7 @@ def test_main(tmpdir: py.path.local, capsys: CaptureFixture):
     args = app.run.main_parser.parse_args(
         ['-w', ws_path, 'test']
     )
-    model, args = app.run.main(args)
+    model, _, args = app.run.main(args)
     assert model.config.x == -3
     assert args.snapshot == '15'
 
@@ -104,6 +104,7 @@ def test_main(tmpdir: py.path.local, capsys: CaptureFixture):
     assert capsys.readouterr().err.strip().startswith('usage:')
 
     # reset logging state as app.run.main messed up with it
-    import logging, importlib
+    import logging
+    import importlib
     logging.shutdown()
     importlib.reload(logging)

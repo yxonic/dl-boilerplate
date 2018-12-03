@@ -47,8 +47,8 @@ def namespace_subparser(namespace, parser):  # pragma: no cover
     robj = re.compile(r'^(-+)')
 
     class _Wrapper:
-        def __init__(self, parser):
-            self.parser = parser
+        def __init__(self, _parser):
+            self.parser = _parser
 
         def add_argument(self, *args, **kwargs):
             args = [robj.sub(r'\1' + namespace + '.', s) for s in args]

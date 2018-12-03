@@ -29,7 +29,7 @@ class Model(abc.ABC):
             >>> print(model.config)
             Config(foo=3)
         """
-        config = namedtuple('Config', kwargs.keys())(*kwargs.values())
+        config = namedtuple(cls.__name__ + 'Conf', kwargs.keys())(*kwargs.values())
         return cls(config)
 
     @classmethod
