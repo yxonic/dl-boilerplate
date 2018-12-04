@@ -2,7 +2,8 @@ import re
 
 
 def wrap_parser(namespace, parser):  # pragma: no cover
-    """Wraps an argument parser, putting all following options under a namespace."""
+    """Wraps an argument parser, putting all following options under a
+    namespace. """
     robj = re.compile(r'^(-+)')
 
     class _Wrapper:

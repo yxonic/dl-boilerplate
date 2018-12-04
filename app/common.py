@@ -143,7 +143,8 @@ class Workspace:
             self._model_name = cfg['model_name']
             self._config = cfg[self.model_name.lower()]
         except (FileNotFoundError, KeyError):
-            raise NotConfiguredError('config.toml doesn\'t exist or is incomplete')
+            raise NotConfiguredError('config.toml doesn\'t exist or '
+                                     'is incomplete')
         return self._config
 
     def set_model(self, name, config):
@@ -169,9 +170,11 @@ class Workspace:
         if logger.handlers:
             # previously configured, remain unchanged
             return logger
-        fileFormatter = logging.Formatter('%(levelname)s [%(name)s] %(asctime)s %(message)s',
+        fileFormatter = logging.Formatter('%(levelname)s [%(name)s] '
+                                          '%(asctime)s %(message)s',
                                           datefmt='%Y-%m-%d %H:%M:%S')
-        fileHandler = logging.FileHandler(str(self.log_path / (name + '.log')))
+        fileHandler = logging.FileHandler(
+            str(self.log_path / (name + '.log')))
         fileHandler.setFormatter(fileFormatter)
         logger.addHandler(fileHandler)
         return logger
@@ -179,7 +182,8 @@ class Workspace:
     def _save_config(self):
         """Save configuration."""
         f = (self.path / 'config.toml').open('w')
-        toml.dump({'model_name': self.model_name, self.model_name.lower(): self.config}, f)
+        toml.dump({'model_name': self.model_name,
+                   self.model_name.lower(): self.config}, f)
         f.close()
 
 

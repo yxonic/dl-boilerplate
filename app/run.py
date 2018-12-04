@@ -52,10 +52,10 @@ class Config(common.Command):
     """Command ``config``,
 
     Configure a model and its parameters for a workspace.
-    
+
     Example:
         .. code-block:: bash
-            
+
             $ python app.run -w ws/test config Simple -foo=5
             In [ws/test]: configured Simple with Config(foo='5')
     """
@@ -65,7 +65,8 @@ class Config(common.Command):
         subs = parser.add_subparsers(title='models available', dest='model')
         subs.required = True
         group_options = defaultdict(set)
-        _models = [m[0] for m in ins.getmembers(mm, _sub_class_checker(mm.Model))
+        _models = [m[0] for m in ins.getmembers(mm,
+                                                _sub_class_checker(mm.Model))
                    if not m[0].startswith('_')]
         for model in _models:
             sub = subs.add_parser(model, formatter_class=_parser_formatter)
@@ -184,7 +185,6 @@ if __name__ == '__main__':
     else:
         _logger.setLevel(logging.INFO)
 
-
     class _ColoredFormatter(logging.Formatter):
         _LOG_COLORS = {
             'WARNING': 'yellow',
@@ -197,10 +197,9 @@ if __name__ == '__main__':
         def format(self, record):
             levelname = record.levelname
             if levelname in self._LOG_COLORS:
-                record.levelname = util.colored(record.levelname[0],
-                                                self._LOG_COLORS[record.levelname])
+                record.levelname = util.colored(
+                    record.levelname[0], self._LOG_COLORS[record.levelname])
             return logging.Formatter.format(self, record)
-
 
     logFormatter = _ColoredFormatter(
         '%(levelname)s [%(name)s] %(asctime)s %(message)s',
