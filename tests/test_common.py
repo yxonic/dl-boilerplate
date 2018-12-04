@@ -1,5 +1,3 @@
-import os
-
 import py
 import pytest
 
@@ -29,10 +27,10 @@ def test_model():
 
 
 def test_workspace(tmpdir: py.path.local):
-    ws = common.Workspace(os.path.join(tmpdir, 'ws'))
-    assert str(ws.log_path) == os.path.join(tmpdir, 'ws/log')
-    assert str(ws.result_path) == os.path.join(tmpdir, 'ws/result')
-    assert str(ws.snapshot_path) == os.path.join(tmpdir, 'ws/snapshot')
+    ws = common.Workspace(str(tmpdir.join('ws')))
+    assert str(ws.log_path) == str(tmpdir.join('ws/log'))
+    assert str(ws.result_path) == str(tmpdir.join('ws/result'))
+    assert str(ws.snapshot_path) == str(tmpdir.join('ws/snapshot'))
 
     # test logging utilities
     logger = ws.logger('test')
