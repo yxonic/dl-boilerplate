@@ -11,7 +11,7 @@ There main design idea behind this template is the **workspace** concept.
 Model configurations are saved as `config.toml` file inside each workspace, by the `config` command. After that, we can run `train` or `test` command, which loads the configuration in that workspace, builds the model or trainer accordingly if needed, and resume training / reproduce testing results.
 
 ## TODO
+- [x] Tests with full coverage
 - [ ] Workspace utilities
 - [ ] More example scenarios
 - [ ] Tutorials and full documentation
-- [ ] Tests with full coverage
