@@ -10,7 +10,7 @@ from app.models import Model
 
 class ModelTest(Model):
     @classmethod
-    def _add_arguments(cls, parser):
+    def add_arguments(cls, parser):
         parser.add_argument('-x', default=10, type=int)
 
 
@@ -39,7 +39,7 @@ def test_main(tmpdir: py.path.local, capsys: CaptureFixture):
             ['-w', ws_path, 'train']
         )
         w, _ = app.run.main(args)
-        _ = w.model
+        w.build_model()
 
     # test config
     args = app.run.main_parser.parse_args(
@@ -63,14 +63,14 @@ def test_main(tmpdir: py.path.local, capsys: CaptureFixture):
         ['-w', ws_path, 'train', '-N', '3']
     )
     w, args = app.run.main(args)
-    assert w.model.config.x == -3
+    assert w.build_model().config.x == -3
     assert args.epochs == 3
 
     args = app.run.main_parser.parse_args(
         ['-w', ws_path, 'test', '-s', '15']
     )
     w, args = app.run.main(args)
-    assert w.model.config.x == -3
+    assert w.build_model().config.x == -3
     assert args.snapshot == '15'
 
     # test clean

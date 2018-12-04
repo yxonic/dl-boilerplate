@@ -3,13 +3,12 @@ Main program parsing arguments and running commands.
 """
 from __future__ import print_function
 
-import abc
 import argparse
 import inspect as ins
 import logging
 import shutil
 import sys
-from collections import namedtuple, defaultdict
+from collections import defaultdict
 
 from . import command
 from . import common
@@ -17,51 +16,7 @@ from . import models as mm
 from . import util
 
 
-def _sub_class_checker(cls):
-    def rv(obj):
-        if ins.isclass(obj) and not ins.isabstract(obj) \
-                and issubclass(obj, cls):
-            return True
-        else:
-            return False
-    return rv
-
-
-_models = [m[0] for m in ins.getmembers(mm, _sub_class_checker(mm.Model))
-           if not m[0].startswith('_')]
-
-_parser_formatter = argparse.ArgumentDefaultsHelpFormatter
-main_parser = util._ArgumentParser(formatter_class=_parser_formatter,
-                                   prog='python -m app.run')
-main_parser.add_argument('-w', '--workspace',
-                         help='workspace dir', default='ws/test')
-main_parser.add_argument('-q', action='store_true', help='quiet')
-main_parser.add_argument('-v', action='store_true', help='verbose')
-_subparsers = main_parser.add_subparsers(title='supported commands',
-                                         dest='command')
-_subparsers.required = True
-_subparser_map = {}
-
-
-class Command(abc.ABC):
-    """Command interface."""
-    def __init__(self, parser):
-        self.parser = parser
-
-    def _run(self, args):
-        ws = common.Workspace(args.workspace)
-        cmd = args.command
-        del args.command, args.func, args.workspace
-        args = {name: value for (name, value) in args._get_kwargs()}
-        args = namedtuple(cmd.capitalize(), args.keys())(*args.values())
-        return self.run(ws, args)
-
-    @abc.abstractmethod
-    def run(self, ws, args):
-        raise NotImplementedError
-
-
-class Train(Command):
+class Train(common.Command):
     """Command ``train``. See :func:`~app.command.train`."""
 
     def __init__(self, parser):
@@ -77,7 +32,7 @@ class Train(Command):
         return command.train(ws, args)
 
 
-class Test(Command):
+class Test(common.Command):
     """Command ``test``. See :func:`~app.command.test`."""
 
     def __init__(self, parser):
@@ -93,7 +48,7 @@ class Test(Command):
         return command.test(ws, args)
 
 
-class Config(Command):
+class Config(common.Command):
     """Command ``config``,
 
     Configure a model and its parameters for a workspace.
@@ -110,12 +65,13 @@ class Config(Command):
         subs = parser.add_subparsers(title='models available', dest='model')
         subs.required = True
         group_options = defaultdict(set)
-
+        _models = [m[0] for m in ins.getmembers(mm, _sub_class_checker(mm.Model))
+                   if not m[0].startswith('_')]
         for model in _models:
             sub = subs.add_parser(model, formatter_class=_parser_formatter)
             group = sub.add_argument_group('config')
             Model = getattr(mm, model)
-            Model._add_arguments(group)
+            Model.add_arguments(group)
             for action in group._group_actions:
                 group_options[model].add(action.dest)
 
@@ -124,11 +80,11 @@ class Config(Command):
                 _model = args.model
                 config = {name: value for (name, value) in args._get_kwargs()
                           if name in group_options[_model]}
+                Model._unfold_config(config)
                 print('In [%s]: configured %s with %s' %
                       (args.workspace, _model, str(config)),
                       file=sys.stderr)
-                ws.update_config({'model': _model, 'config': config})
-                ws.save_config()
+                ws.set_model(_model, config)
 
             sub.set_defaults(func=save)
 
@@ -136,7 +92,7 @@ class Config(Command):
         pass
 
 
-class Clean(Command):
+class Clean(common.Command):
     """Command ``clean``.
 
     Remove all snapshots in specific workspace. If ``--all`` is specified,
@@ -155,6 +111,47 @@ class Clean(Command):
             shutil.rmtree(str(ws.snapshot_path))
 
 
+def _sub_class_checker(cls):
+    def rv(obj):
+        if ins.isclass(obj) and not ins.isabstract(obj) \
+                and issubclass(obj, cls):
+            return True
+        else:
+            return False
+
+    return rv
+
+
+class _ArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        # customize error message
+        self.print_usage(sys.stderr)
+        err = util.colored('error:', 'red', True)
+        self.exit(2, '%s %s\n' % (err, message))
+
+
+_parser_formatter = argparse.ArgumentDefaultsHelpFormatter
+main_parser = _ArgumentParser(formatter_class=_parser_formatter,
+                              prog='python -m app.run')
+main_parser.add_argument('-w', '--workspace',
+                         help='workspace dir', default='ws/test')
+main_parser.add_argument('-q', action='store_true', help='quiet')
+main_parser.add_argument('-v', action='store_true', help='verbose')
+_subparsers = main_parser.add_subparsers(title='supported commands',
+                                         dest='command')
+_subparsers.required = True
+_subparser_map = {}
+
+_commands = {m[0].lower(): m[1]
+             for m in ins.getmembers(sys.modules[__name__],
+                                     _sub_class_checker(common.Command))}
+for _cmd in _commands:
+    _sub = _subparsers.add_parser(_cmd,
+                                  formatter_class=_parser_formatter)
+    _subparser_map[_cmd] = _sub
+    _sub.set_defaults(func=_commands[_cmd](_sub)._run)
+
+
 def main(args):
     logger = logging.getLogger(args.command)
     try:
@@ -164,7 +161,7 @@ def main(args):
         import traceback
         sys.stderr.write(traceback.format_exc())
         logger.warning('cancelled by user')
-    except common.NotConfiguredError as e:
+    except common.NotConfiguredError as e:  # pragma: no cover
         print('error:', e)
         _subparser_map['config'].print_usage()
         sys.exit(1)
@@ -173,16 +170,6 @@ def main(args):
         import traceback
         sys.stderr.write(traceback.format_exc())
         logger.error('exception occurred: %s', e)
-
-
-_commands = {m[0].lower(): m[1]
-             for m in ins.getmembers(sys.modules[__name__],
-                                     _sub_class_checker(Command))}
-for _cmd in _commands:
-    _sub = _subparsers.add_parser(_cmd,
-                                  formatter_class=_parser_formatter)
-    _subparser_map[_cmd] = _sub
-    _sub.set_defaults(func=_commands[_cmd](_sub)._run)
 
 
 if __name__ == '__main__':
@@ -197,7 +184,25 @@ if __name__ == '__main__':
     else:
         _logger.setLevel(logging.INFO)
 
-    logFormatter = util.ColoredFormatter(
+
+    class _ColoredFormatter(logging.Formatter):
+        _LOG_COLORS = {
+            'WARNING': 'yellow',
+            'INFO': 'green',
+            'DEBUG': 'blue',
+            'CRITICAL': 'yellow',
+            'ERROR': 'red'
+        }
+
+        def format(self, record):
+            levelname = record.levelname
+            if levelname in self._LOG_COLORS:
+                record.levelname = util.colored(record.levelname[0],
+                                                self._LOG_COLORS[record.levelname])
+            return logging.Formatter.format(self, record)
+
+
+    logFormatter = _ColoredFormatter(
         '%(levelname)s [%(name)s] %(asctime)s %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
@@ -205,6 +210,7 @@ if __name__ == '__main__':
     consoleHandler.setFormatter(logFormatter)
     _logger.addHandler(consoleHandler)
 
+    # remove logging related options
     del _args.q
     del _args.v
 

@@ -1,3 +1,8 @@
+app.common
+----------
+.. automodule:: app.common
+   :members:
+
 app.run
 -------
 .. automodule:: app.run

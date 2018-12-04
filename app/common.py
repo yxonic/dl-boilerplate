@@ -1,16 +1,17 @@
 import abc
 import argparse
-import functools
 import logging
 import pathlib
 from collections import namedtuple
 
 import toml
 
-from . import util
-
 
 class NotConfiguredError(Exception):
+    pass
+
+
+class ParseError(Exception):
     pass
 
 
@@ -23,7 +24,7 @@ class Model(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def _add_arguments(cls, parser: argparse.ArgumentParser):
+    def add_arguments(cls, parser: argparse.ArgumentParser):
         """Add arguments to an argparse subparser."""
         raise NotImplementedError
 
@@ -37,17 +38,23 @@ class Model(abc.ABC):
             >>> print(model.config)
             Config(foo=3)
         """
-        config = namedtuple(cls.__name__ + 'Conf', kwargs.keys())(*kwargs.values())
+        config = namedtuple(cls.__name__, kwargs.keys())(*kwargs.values())
         return cls(config)
 
     @classmethod
     def parse(cls, args):
         """Parse command-line options and build model."""
-        parser = util._ArgumentParser(prog='', add_help=False,
-                                      raise_error=True)
-        cls._add_arguments(parser)
+
+        class _ArgumentParser(argparse.ArgumentParser):
+            def error(self, message):
+                raise ParseError(message)
+
+        parser = _ArgumentParser(prog='', add_help=False)
+        cls.add_arguments(parser)
         args = parser.parse_args(args)
-        return cls.build(**dict(args._get_kwargs()))
+        config = dict(args._get_kwargs())
+        Model._unfold_config(config)
+        return cls.build(**config)
 
     def __init__(self, config):
         """
@@ -55,6 +62,26 @@ class Model(abc.ABC):
             config (namedtuple): model configuration
         """
         self.config = config
+
+    def __str__(self):
+        return str(self.config)
+
+    @staticmethod
+    def _unfold_config(cfg):
+        for k, v in list(cfg.items()):
+            if isinstance(v, dict):
+                Model._unfold_config(v)
+            if '.' not in k:
+                continue
+            d = cfg
+            for sec in k.split('.')[:-1]:
+                if sec in d:
+                    d = d[sec]
+                else:
+                    d[sec] = {}
+                    d = d[sec]
+            d[k.split('.')[-1]] = v
+            del cfg[k]
 
 
 class Workspace:
@@ -68,6 +95,7 @@ class Workspace:
         self._snapshot_path = self._path / 'snapshot'
         self._result_path = self._path / 'result'
         self._config = None
+        self._model_name = None
 
     def __str__(self):
         return str(self.path)
@@ -100,28 +128,43 @@ class Workspace:
         return self._log_path
 
     @property
+    def model_name(self):
+        if self._model_name is not None:
+            return self._model_name
+        _ = self.config
+        return self._model_name
+
+    @property
     def config(self):
         if self._config is not None:
             return self._config
         try:
             cfg = toml.load((self.path / 'config.toml').open())
-        except FileNotFoundError:
-            cfg = {}
-        self._config = cfg
-        return cfg
-
-    @property
-    @functools.lru_cache()
-    def model(self):
-        if 'model' not in self.config:
+            self._model_name = cfg['model_name']
+            self._config = cfg[self.model_name.lower()]
+        except (FileNotFoundError, KeyError):
             raise NotConfiguredError('config.toml doesn\'t exist or is incomplete')
-        from . import models
-        model_cls = getattr(models, self.config['model'])
-        return model_cls.build(**self.config['config'])
+        return self._config
 
-    @functools.lru_cache()
+    def set_model(self, name, config):
+        self._model_name = name
+        self._config = config
+        self._save_config()
+
+    def build_model(self):
+        """Build model according to the configurations in current workspace."""
+        from . import models
+        model_cls = getattr(models, self.model_name)
+        return model_cls.build(**self.config)
+
     def logger(self, name: str):
-        """Get a logger that logs to a file. Notice that same logger instance is returned for same names."""
+        """Get a logger that logs to a file.
+
+        Notice that same logger instance is returned for same names.
+
+        Args:
+            name(str): logger name
+        """
         logger = logging.getLogger(name)
         if logger.handlers:
             # previously configured, remain unchanged
@@ -133,15 +176,27 @@ class Workspace:
         logger.addHandler(fileHandler)
         return logger
 
-    def update_config(self, config):
-        """Update configuration."""
-        cfg = self.config
-        cfg.update(config)
-        util._unfold_config(cfg)
-        self._config = cfg
-
-    def save_config(self):
+    def _save_config(self):
         """Save configuration."""
         f = (self.path / 'config.toml').open('w')
-        toml.dump(self.config, f)
+        toml.dump({'model_name': self.model_name, self.model_name.lower(): self.config}, f)
         f.close()
+
+
+class Command(abc.ABC):
+    """Command interface."""
+
+    def __init__(self, parser):
+        self.parser = parser
+
+    def _run(self, args):
+        ws = Workspace(args.workspace)
+        cmd = args.command
+        del args.command, args.func, args.workspace
+        args = {name: value for (name, value) in args._get_kwargs()}
+        args = namedtuple(cmd.capitalize(), args.keys())(*args.values())
+        return self.run(ws, args)
+
+    @abc.abstractmethod
+    def run(self, ws, args):
+        raise NotImplementedError

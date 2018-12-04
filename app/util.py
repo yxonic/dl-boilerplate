@@ -1,10 +1,8 @@
-import argparse
-import logging
 import re
-import sys
 
 
 def wrap_parser(namespace, parser):  # pragma: no cover
+    """Wraps an argument parser, putting all following options under a namespace."""
     robj = re.compile(r'^(-+)')
 
     class _Wrapper:
@@ -18,84 +16,27 @@ def wrap_parser(namespace, parser):  # pragma: no cover
     return _Wrapper(parser)
 
 
-def _unfold_config(cfg):  # pragma: no cover
-    for k, v in cfg.items():
-        if isinstance(v, dict):
-            _unfold_config(v)
-        if '.' not in k:
-            continue
-        d = cfg
-        for sec in k.split('.')[:-1]:
-            if sec in d:
-                d = d[sec]
-            else:
-                d[sec] = {}
-                d = d[sec]
-        d[k.split('.')[-1]] = v
-        del cfg[k]
+def colored(text, color, bold=False):
+    """Generate colored output.
+
+    Args:
+        text (str): text to be colored
+        color (str): color name
+        bold (bool): output bold text (default: ``False``)
+    """
+    color = getattr(_BColors, color)
+    if bold:
+        return _BColors.bold + color + text + _BColors.end
+    else:
+        return color + text + _BColors.end
 
 
 class _BColors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
-
-def _colored(text, color, bold=False):
-    if bold:
-        return _BColors.BOLD + color + text + _BColors.ENDC
-    else:
-        return color + text + _BColors.ENDC
-
-
-#: Log level to color mapping.
-LOG_COLORS = {
-    'WARNING': _BColors.WARNING,
-    'INFO': _BColors.OKGREEN,
-    'DEBUG': _BColors.OKBLUE,
-    'CRITICAL': _BColors.WARNING,
-    'ERROR': _BColors.FAIL
-}
-
-
-class ColoredFormatter(logging.Formatter):
-    """Log formatter that provides colored output."""
-
-    def __init__(self, fmt, datefmt):
-        """
-        Args:
-            fmt (str): message format string
-            datefmt (str): date format string
-        """
-        super().__init__(fmt, datefmt)
-
-    def format(self, record):
-        """Format the specified record as text.
-
-        If ``self.use_color`` is ``True``, format log messages according to
-        :data:`~app.utils.LOG_COLORS`.
-        """
-        levelname = record.levelname
-        if levelname in LOG_COLORS:
-            record.levelname = _colored(record.levelname[0],
-                                        LOG_COLORS[record.levelname])
-        return logging.Formatter.format(self, record)
-
-
-class _ArgumentParser(argparse.ArgumentParser):
-    def __init__(self, raise_error=False, **kwargs):
-        super().__init__(**kwargs)
-        self.raise_error = raise_error
-
-    def error(self, message):
-        if self.raise_error:
-            raise ValueError(message)
-        # customize error message
-        self.print_usage(sys.stderr)
-        err = _colored('error:', LOG_COLORS['ERROR'], True)
-        self.exit(2, '%s %s\n' % (err, message))
+    header = '\033[95m'
+    blue = '\033[94m'
+    green = '\033[92m'
+    yellow = '\033[93m'
+    red = '\033[91m'
+    end = '\033[0m'
+    bold = '\033[1m'
+    underline = '\033[4m'
