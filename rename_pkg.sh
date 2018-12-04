@@ -1,7 +1,7 @@
 #!/bin/sh
 origname='app'
 if [ -z $1 ]; then
-    echo 'please provide a new name'
+    echo 'usage: ./rename_pkg.sh <new_name>'
     exit 1
 fi
 newname=$1
