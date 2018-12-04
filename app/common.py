@@ -89,19 +89,40 @@ class Workspace:
     with specific configuration, save snapshots, open results, etc., using
     workspace objects."""
 
-    def __init__(self, path: str):
+    def __init__(self, path: str, model=None, config=None):
         self._path = pathlib.Path(path)
         self._log_path = self._path / 'log'
         self._snapshot_path = self._path / 'snapshot'
         self._result_path = self._path / 'result'
-        self._config = None
-        self._model_name = None
+
+        if model is None:
+            self._model_cls = None
+            self._config = None
+            return
+
+        if config is None:
+            config = {}
+
+        self._set_model(model, config)
+        self.save()
 
     def __str__(self):
         return str(self.path)
 
     def __repr__(self):
         return 'Workspace(path=' + str(self.path) + ')'
+
+    def _set_model(self, model, config):
+        if isinstance(model, str):
+            self._model_cls = Workspace._get_class(model)
+        else:
+            self._model_cls = model
+        self._config = config
+
+    @staticmethod
+    def _get_class(name):
+        from . import models as mm
+        return getattr(mm, name)
 
     @property
     def path(self):
@@ -129,34 +150,34 @@ class Workspace:
 
     @property
     def model_name(self):
-        if self._model_name is not None:
-            return self._model_name
-        _ = self.config
-        return self._model_name
+        return self.model_cls.__name__
+
+    @property
+    def model_cls(self):
+        if self._model_cls is not None:
+            return self._model_cls
+        self.load()
+        return self._model_cls
 
     @property
     def config(self):
         if self._config is not None:
             return self._config
-        try:
-            cfg = toml.load((self.path / 'config.toml').open())
-            self._model_name = cfg['model_name']
-            self._config = cfg[self.model_name.lower()]
-        except (FileNotFoundError, KeyError):
-            raise NotConfiguredError('config.toml doesn\'t exist or '
-                                     'is incomplete')
+        self.load()
         return self._config
 
-    def set_model(self, name, config):
-        self._model_name = name
-        self._config = config
-        self._save_config()
+    def setup_like(self, model: Model):
+        """Configure workspace with configurations from a given model.
+
+        Args:
+            model (Model): model to be used
+        """
+        self._set_model(model.__class__, model.config._asdict())
 
     def build_model(self):
-        """Build model according to the configurations in current workspace."""
-        from . import models
-        model_cls = getattr(models, self.model_name)
-        return model_cls.build(**self.config)
+        """Build model according to the configurations in current
+        workspace."""
+        return self.model_cls.build(**self.config)
 
     def logger(self, name: str):
         """Get a logger that logs to a file.
@@ -179,7 +200,16 @@ class Workspace:
         logger.addHandler(fileHandler)
         return logger
 
-    def _save_config(self):
+    def load(self):
+        """Load configuration."""
+        try:
+            cfg = toml.load((self.path / 'config.toml').open())
+            self._set_model(cfg['model_name'], cfg[cfg['model_name'].lower()])
+        except (FileNotFoundError, KeyError):
+            raise NotConfiguredError('config.toml doesn\'t exist or '
+                                     'is incomplete')
+
+    def save(self):
         """Save configuration."""
         f = (self.path / 'config.toml').open('w')
         toml.dump({'model_name': self.model_name,

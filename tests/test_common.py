@@ -27,7 +27,7 @@ def test_model():
 
 
 def test_workspace(tmpdir: py.path.local):
-    ws = common.Workspace(str(tmpdir.join('ws')))
+    ws = common.Workspace(str(tmpdir.join('ws')), ModelTest, {'x': 3, 'y': 4})
     assert str(ws.log_path) == str(tmpdir.join('ws/log'))
     assert str(ws.result_path) == str(tmpdir.join('ws/result'))
     assert str(ws.snapshot_path) == str(tmpdir.join('ws/snapshot'))
@@ -40,3 +40,12 @@ def test_workspace(tmpdir: py.path.local):
     logger = ws.logger('test')
     logger.error('test log 2')
     assert len(list((ws.log_path / 'test.log').open())) == 2
+
+    ws = common.Workspace(str(tmpdir.join('ws')))
+    assert ws.config == {'x': 3, 'y': 4}
+
+    ws2 = common.Workspace(str(tmpdir.join('ws2')))
+    ws2.setup_like(ws.build_model())
+    assert str(ws2.build_model()) == 'ModelTest(x=3, y=4)'
+
+    _ = common.Workspace(str(tmpdir.join('ws3')), ModelTest)

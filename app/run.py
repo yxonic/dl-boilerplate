@@ -77,7 +77,6 @@ class Config(common.Command):
                 group_options[model].add(action.dest)
 
             def save(args):
-                ws = common.Workspace(args.workspace)
                 _model = args.model
                 config = {name: value for (name, value) in args._get_kwargs()
                           if name in group_options[_model]}
@@ -85,7 +84,9 @@ class Config(common.Command):
                 print('In [%s]: configured %s with %s' %
                       (args.workspace, _model, str(config)),
                       file=sys.stderr)
-                ws.set_model(_model, config)
+
+                ws = common.Workspace(args.workspace, _model, config)
+                ws.save()
 
             sub.set_defaults(func=save)
 
