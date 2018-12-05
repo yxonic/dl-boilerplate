@@ -104,7 +104,7 @@ class Workspace:
             config = {}
 
         self._set_model(model, config)
-        self.save()
+        self._save()
 
     def __str__(self):
         return str(self.path)
@@ -156,14 +156,14 @@ class Workspace:
     def model_cls(self):
         if self._model_cls is not None:
             return self._model_cls
-        self.load()
+        self._load()
         return self._model_cls
 
     @property
     def config(self):
         if self._config is not None:
             return self._config
-        self.load()
+        self._load()
         return self._config
 
     def setup_like(self, model: Model):
@@ -200,7 +200,7 @@ class Workspace:
         logger.addHandler(fileHandler)
         return logger
 
-    def load(self):
+    def _load(self):
         """Load configuration."""
         try:
             cfg = toml.load((self.path / 'config.toml').open())
@@ -209,7 +209,7 @@ class Workspace:
             raise NotConfiguredError('config.toml doesn\'t exist or '
                                      'is incomplete')
 
-    def save(self):
+    def _save(self):
         """Save configuration."""
         f = (self.path / 'config.toml').open('w')
         toml.dump({'model_name': self.model_name,

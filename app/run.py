@@ -86,7 +86,6 @@ class Config(common.Command):
                       file=sys.stderr)
 
                 ws = common.Workspace(args.workspace, _model, config)
-                ws.save()
 
             sub.set_defaults(func=save)
 
