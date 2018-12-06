@@ -8,9 +8,8 @@ that have concerns in reproducibility. It frees myself from coding for
 features like configure/save/load a model, resume a training process, 
 testing on each snapshots, tracking progress, logging, etc.
 
-The template doesn't rely on any third-party packages except for [toml]
-(https://github.com/toml-lang/toml), which provides powerful yet 
-human-readable configuration facilities.
+The template doesn't rely on any third-party packages except for [toml](https://github.com/toml-lang/toml),
+which provides powerful yet human-readable configuration facilities.
 
 ## Design
 
