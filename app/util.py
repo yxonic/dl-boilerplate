@@ -1,3 +1,4 @@
+import inspect as ins
 import re
 
 
@@ -41,3 +42,14 @@ class _BColors:
     end = '\033[0m'
     bold = '\033[1m'
     underline = '\033[4m'
+
+
+def sub_class_checker(cls):
+    def rv(obj):
+        if ins.isclass(obj) and not ins.isabstract(obj) \
+                and issubclass(obj, cls):
+            return True
+        else:
+            return False
+
+    return rv

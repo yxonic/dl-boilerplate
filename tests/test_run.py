@@ -14,14 +14,15 @@ class ModelTest(Model):
         parser.add_argument('-x', default=10, type=int)
 
 
-def dummy(ws, args):
+def dummy(self, ws, args):
+    _ = self
     return ws, args
 
 
 # insert model and command for testing
 app.models.ModelTest = ModelTest
-app.command.train = dummy
-app.command.test = dummy
+app.command.Train.run = dummy
+app.command.Test.run = dummy
 
 
 def test_main(tmpdir: py.path.local, capsys: CaptureFixture):
