@@ -3,6 +3,7 @@ import argparse
 import logging
 import pathlib
 from collections import namedtuple
+from operator import itemgetter
 
 import toml
 
@@ -38,7 +39,8 @@ class Model(abc.ABC):
             >>> print(model.config)
             Config(foo=3)
         """
-        config = namedtuple(cls.__name__, kwargs.keys())(*kwargs.values())
+        keys, values = zip(*sorted(list(kwargs.items()), key=itemgetter(0)))
+        config = namedtuple(cls.__name__, keys)(*values)
         return cls(config)
 
     @classmethod
