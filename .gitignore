@@ -6,6 +6,8 @@ __pycache__/
 *~
 .DS_Store
 .coverage
+htmlcov/
+coverage.xml
 
 data/
 ws/
