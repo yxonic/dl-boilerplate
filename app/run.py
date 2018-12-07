@@ -17,7 +17,7 @@ class _ArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         # customize error message
         self.print_usage(sys.stderr)
-        err = util.colored('error:', 'red', True)
+        err = util.colored('error:', 'r', style='b')
         self.exit(2, '%s %s\n' % (err, message))
 
 
@@ -78,11 +78,11 @@ if __name__ == '__main__':
 
     class _ColoredFormatter(logging.Formatter):
         _LOG_COLORS = {
-            'WARNING': 'yellow',
-            'INFO': 'green',
-            'DEBUG': 'blue',
-            'CRITICAL': 'yellow',
-            'ERROR': 'red'
+            'WARNING': 'y',
+            'INFO': 'g',
+            'DEBUG': 'b',
+            'CRITICAL': 'y',
+            'ERROR': 'r'
         }
 
         def format(self, record):
